@@ -1,11 +1,11 @@
 ---
 name: configure-iracing-performance
-description: Diagnose, test, and safely tune iRacing driving and replay graphics for single-monitor, triple-monitor, or VR systems. Use when a driver wants visual immersion, the best image quality at a stable FPS target, maximum consistency and low latency, help with stutter or reprojection, an explanation for an FPS cap, renderer-file tuning, or optimization after a hardware or display change.
+description: Diagnose, test, and safely tune iRacing driving and replay graphics for single-monitor, triple-monitor, or VR systems, including relevant system-level bottlenecks when evidence points outside the simulator. Use when a driver wants visual immersion, the best image quality at a stable FPS target, maximum consistency and low latency, help with stutter or reprojection, an explanation for an FPS cap, renderer-file tuning, or optimization after a hardware, display, capture, peripheral, or software change.
 ---
 
 # iRacing Performance Configuration
 
-Treat every recommendation as a measured experiment. Prefer the best image quality that satisfies the driver's chosen goal; never accept a preset or documentation recommendation when a same-scenario test performs or feels worse.
+Treat every recommendation as a measured experiment. Prefer the best image quality that satisfies the driver's chosen goal; never accept a preset or documentation recommendation when a same-scenario test performs or feels worse. Treat small, overlapping measurement changes as noise until repeated evidence separates them.
 
 ## Establish the Goal First
 
@@ -28,7 +28,8 @@ Then collect only missing details:
 - For **maximum consistency**, record the FPS or native VR cadence, latency preference, and acceptable visual trade-offs.
 - For monitors, confirm resolution, monitor count, Windows refresh rate, and adaptive-sync/V-Sync use.
 - For VR, confirm headset, runtime, connection, native refresh rate, render resolution, and reprojection or motion smoothing.
-- Define the repeatable test: car, track, session type, time, weather, grid size, and the demanding scene to compare.
+- Define the repeatable test: car, track, session type, fixed session time, weather, grid size, camera, test duration, and the demanding scene to compare.
+- Confirm whether recording, streaming, telemetry, overlays, hardware utilities, or communication software must remain active in the target setup.
 
 ## Keep Driving and Replay Independent
 
@@ -47,19 +48,29 @@ Then collect only missing details:
 - Before the first file edit, make a backup and record the original SHA-256 hash.
 - Preserve resolution, monitor topology, FOV, and replay quality unless the driver accepts a change.
 - Change one performance lever per test. A lever may require tightly coupled keys, such as enabling a cap and setting its value.
+- Never terminate, disable, or reconfigure external software merely because it is present. Explain why each candidate may matter and ask whether it is intentional for the target scenario.
+- Preserve required capture, streaming, telemetry, communication, and peripheral software across every comparison; optimize around it as part of the system.
+- Do not keep or revert a change because of an isolated one- or two-FPS movement or a few tenths of a millisecond. Use ranges and repeated evidence.
+- Treat system-wide input, audio, video, or device stalls as a platform problem first. Pause renderer tuning until the symptom is isolated.
+- Identify an unfamiliar driver, virtual display, or device by process path, publisher, hardware IDs, and active resource use before proposing action. Prefer a reversible test; uninstall only with explicit authorization and a rollback path.
 
 ## Diagnose
 
-1. Read [references/metrics.md](references/metrics.md).
-2. Read [references/monitor.md](references/monitor.md) for one or three monitors, or [references/vr.md](references/vr.md) for VR.
-3. Run:
+1. Read [references/preflight.md](references/preflight.md).
+2. Read [references/metrics.md](references/metrics.md).
+3. Read [references/monitor.md](references/monitor.md) for one or three monitors, or [references/vr.md](references/vr.md) for VR.
+4. Read [references/external-troubleshooting.md](references/external-troubleshooting.md) only when observed software, devices, recent system changes, or symptoms outside iRacing make it relevant.
+5. Run:
 
    ```powershell
    scripts/diagnose.ps1 -DisplayMode <monitor|openxr|openvr|oculus> -OutputFormat Json
    ```
 
-4. Confirm `Renderer.MatchesDisplayMode`, inspect `Processes.Blocking`, and use `Config.DrivingGraphics` for the driving diagnosis. Treat `Config.ReplayGraphics` as an independent high-quality profile.
-5. Establish the in-session baseline in the agreed scenario. Record FPS plus iRacing `R`, `G`, and `T` frame times. Treat GPU-utilization snapshots as supporting evidence only.
+6. Confirm `Renderer.MatchesDisplayMode`, inspect `Processes.Blocking`, and use `Config.DrivingGraphics` for the driving diagnosis. Treat `Config.ReplayGraphics` as an independent high-quality profile.
+7. Review every entry in `Processes.PerformanceRelevant` before changing graphics. For each entry, state the observed software, its category and rationale, then ask whether it must remain active. Do not infer that a recorder, overlay, telemetry tool, browser, or peripheral utility is unnecessary.
+8. If software must remain active, record only the workload details relevant to the observed symptom and keep the required setup active for every baseline and retest.
+9. When a symptom extends beyond iRacing or correlates with an external program, device, or recent system change, stop graphics tuning, rank plausible causes, and isolate that branch with reversible one-variable tests. Resume renderer tuning only after resolving or excluding it.
+10. Establish natural variance with repeated baseline windows in the agreed scenario. Record FPS, `R`, `G`, and `T` as ranges rather than single values. Treat GPU-utilization snapshots and process presence as supporting evidence only.
 
 ## Tune as an Experiment
 
@@ -72,11 +83,12 @@ Then collect only missing details:
    ```
 
 4. Show the preview. Apply only within the user's requested tuning scope by adding `-Apply`.
-5. Restart when required and repeat the exact baseline scenario.
-6. Compare before and after. Keep the change only when it improves the selected goal without an unacceptable trade-off.
-7. If FPS, frame time, smoothness, latency, stability, or perceived quality regresses, restore the generated backup with `scripts/restore-renderer.ps1` and retain the last measured-good profile.
-8. Continue with the next single lever only after recording the result.
+5. Restart when required and repeat the exact baseline scenario for the same duration and at the same session state. Reset the session or use an A/B/A comparison when simulated time, shadows, weather, or track state can drift.
+6. Compare before and after ranges against the established natural-variance envelope. Treat overlapping ranges and small shifts as inconclusive unless the result repeats.
+7. Keep the change only when a repeatable improvement advances the selected goal without an unacceptable trade-off.
+8. Revert a repeatable regression. For an inconclusive renderer change, restore the last measured-good profile rather than accumulating unproven changes.
+9. Continue with the next single lever only after recording the result as `keep`, `revert`, or `inconclusive`.
 
 ## Finish with Evidence
 
-Report the display path, objective, active renderer, driving and replay separation, test scenario, baseline and final FPS/frame times, bottleneck evidence, changes kept, changes reverted, and intentional visual trade-offs. State that the target is achieved only after an in-session comparison; otherwise report the result as provisional.
+Report the display path, objective, active renderer, driving and replay separation, required background software, test scenario and duration, baseline and final FPS/frame-time ranges, natural variance, bottleneck evidence, changes kept, changes reverted, inconclusive tests, and intentional visual trade-offs. State that the target is achieved only when the lower end of the measured range satisfies it in the representative in-session comparison; otherwise report the result as provisional.

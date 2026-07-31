@@ -22,6 +22,15 @@ function Get-BlockingIRacingProcesses {
     )
 }
 
+function Test-IsLiveRendererPath {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $documents = [Environment]::GetFolderPath('MyDocuments')
+    $liveRendererDirectory = [System.IO.Path]::GetFullPath((Join-Path $documents 'iRacing'))
+    $candidateDirectory = [System.IO.Path]::GetFullPath((Split-Path -Parent $Path))
+    return $candidateDirectory.Equals($liveRendererDirectory, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Get-TextFile {
     param([Parameter(Mandatory)][string]$Path)
 
@@ -153,12 +162,14 @@ foreach ($key in $requested.Keys) {
 }
 
 $effectiveChanges = @($changes | Where-Object Changed)
-$blocking = Get-BlockingIRacingProcesses
+$processGuardApplied = Test-IsLiveRendererPath -Path $RendererPath
+$blocking = if ($processGuardApplied) { Get-BlockingIRacingProcesses } else { @() }
 $preview = [PSCustomObject]@{
     RendererPath = $RendererPath
     Section = $Section
     CurrentSHA256 = $currentHash
     Applied = $false
+    ProcessGuardApplied = $processGuardApplied
     SafeToEdit = ($blocking.Count -eq 0)
     BlockingProcesses = $blocking
     Changes = $changes
@@ -199,6 +210,7 @@ $result = [PSCustomObject]@{
     Section = $Section
     CurrentSHA256 = $currentHash
     Applied = $true
+    ProcessGuardApplied = $processGuardApplied
     SafeToEdit = $true
     BlockingProcesses = @()
     Changes = $changes

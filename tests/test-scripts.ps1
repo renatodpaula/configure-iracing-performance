@@ -23,17 +23,23 @@ $update = Join-Path $root 'scripts\update-renderer.ps1'
 $restore = Join-Path $root 'scripts\restore-renderer.ps1'
 $fixture = Join-Path $PSScriptRoot 'fixtures\renderer-sections.ini'
 
-$parsed = & $diagnose -RendererPath $fixture -DisplayMode monitor -OutputFormat Object -SkipHardware
+$parsed = & $diagnose -RendererPath $fixture -DisplayMode monitor -OutputFormat Object -SkipHardware -ProcessSampleSeconds 0
 Assert-Equal $parsed.Config.DrivingGraphics.MaxCarsToDraw '20' 'Driving and replay sections were mixed.'
 Assert-Equal $parsed.Config.DrivingGraphics.SSAO '0' 'Driving SSAO is incorrect.'
 Assert-Equal $parsed.Config.ReplayGraphics.MaxCarsToDraw '64' 'Replay maximum cars is incorrect.'
 Assert-Equal $parsed.Config.ReplayGraphics.SSAO '1' 'Replay SSAO is incorrect.'
-$parsedJson = (& $diagnose -RendererPath $fixture -DisplayMode monitor -OutputFormat Json -SkipHardware) | ConvertFrom-Json
+Assert-True ($null -ne $parsed.Processes.PerformanceRelevant) 'Performance-relevant process inventory is missing.'
+Assert-True ($parsed.Processes.ReviewNote -match 'not proof') 'Process-review guardrail is missing.'
+foreach ($candidate in $parsed.Processes.PerformanceRelevant) {
+    Assert-True (-not [string]::IsNullOrWhiteSpace($candidate.Rationale)) 'A process candidate lacks rationale.'
+    Assert-True (-not [string]::IsNullOrWhiteSpace($candidate.ReviewQuestion)) 'A process candidate lacks a review question.'
+}
+$parsedJson = (& $diagnose -RendererPath $fixture -DisplayMode monitor -OutputFormat Json -SkipHardware -ProcessSampleSeconds 0) | ConvertFrom-Json
 Assert-Equal $parsedJson.Config.DrivingGraphics.LODMinFPSTarget '144' 'JSON output lost the driving LOD target.'
 
 $missingRendererWasRejected = $false
 try {
-    & $diagnose -RendererPath (Join-Path $PSScriptRoot 'fixtures\missing.ini') -DisplayMode monitor -OutputFormat Object -SkipHardware | Out-Null
+    & $diagnose -RendererPath (Join-Path $PSScriptRoot 'fixtures\missing.ini') -DisplayMode monitor -OutputFormat Object -SkipHardware -ProcessSampleSeconds 0 | Out-Null
 }
 catch {
     $missingRendererWasRejected = $true
@@ -50,6 +56,7 @@ try {
 
     $preview = & $update -RendererPath $workingRenderer -Section 'Graphics Options' -Set 'MaxCarsToDraw=30' -ExpectedHash $originalHash -OutputFormat Object
     Assert-True (-not $preview.Applied) 'Dry-run unexpectedly changed the renderer.'
+    Assert-True (-not $preview.ProcessGuardApplied) 'A temporary fixture was treated as the live renderer.'
     Assert-Equal (Get-FileHash -LiteralPath $workingRenderer -Algorithm SHA256).Hash $originalHash 'Dry-run changed file contents.'
 
     $staleHashWasRejected = $false
@@ -74,7 +81,7 @@ try {
     Assert-True $applied.Applied 'The requested renderer change was not applied.'
     Assert-True (Test-Path -LiteralPath $applied.BackupPath) 'The renderer backup was not created.'
 
-    $changed = & $diagnose -RendererPath $workingRenderer -DisplayMode monitor -OutputFormat Object -SkipHardware
+    $changed = & $diagnose -RendererPath $workingRenderer -DisplayMode monitor -OutputFormat Object -SkipHardware -ProcessSampleSeconds 0
     Assert-Equal $changed.Config.DrivingGraphics.MaxCarsToDraw '30' 'Driving value was not updated.'
     Assert-Equal $changed.Config.ReplayGraphics.MaxCarsToDraw '64' 'Replay value changed with the driving value.'
 
@@ -89,6 +96,7 @@ try {
 
     $restored = & $restore -RendererPath $workingRenderer -BackupPath $applied.BackupPath -ExpectedHash $applied.NewSHA256 -Apply -OutputFormat Object
     Assert-True $restored.Applied 'The renderer backup was not restored.'
+    Assert-True (-not $restored.ProcessGuardApplied) 'A temporary restore was treated as the live renderer.'
     Assert-Equal (Get-FileHash -LiteralPath $workingRenderer -Algorithm SHA256).Hash $originalHash 'Restored renderer does not match the original.'
 }
 finally {
@@ -105,8 +113,11 @@ finally {
     Tests = @(
         'section-aware diagnosis',
         'structured JSON output',
+        'performance-relevant process inventory',
+        'process-review rationale',
         'missing renderer rejection',
         'dry-run integrity',
+        'live-renderer process-guard scoping',
         'stale hash rejection',
         'unknown key rejection',
         'atomic update and backup',

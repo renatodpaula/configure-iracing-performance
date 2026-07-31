@@ -20,6 +20,15 @@ function Write-Result {
     }
 }
 
+function Test-IsLiveRendererPath {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $documents = [Environment]::GetFolderPath('MyDocuments')
+    $liveRendererDirectory = [System.IO.Path]::GetFullPath((Join-Path $documents 'iRacing'))
+    $candidateDirectory = [System.IO.Path]::GetFullPath((Split-Path -Parent $Path))
+    return $candidateDirectory.Equals($liveRendererDirectory, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 if (-not (Test-Path -LiteralPath $RendererPath -PathType Leaf)) {
     throw "Renderer file not found: $RendererPath"
 }
@@ -44,13 +53,19 @@ if ($ExpectedHash -and $currentHash -ine $ExpectedHash) {
     throw "Renderer hash changed. Expected $ExpectedHash but found $currentHash. Diagnose the current file before restoring."
 }
 
-$blocking = @(
-    Get-Process -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.ProcessName -ieq 'iRacingUI' -or $_.ProcessName -imatch '^iRacingSim'
-        } |
-        Select-Object ProcessName, Id
-)
+$processGuardApplied = Test-IsLiveRendererPath -Path $RendererPath
+$blocking = if ($processGuardApplied) {
+    @(
+        Get-Process -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.ProcessName -ieq 'iRacingUI' -or $_.ProcessName -imatch '^iRacingSim'
+            } |
+            Select-Object ProcessName, Id
+    )
+}
+else {
+    @()
+}
 
 $preview = [PSCustomObject]@{
     RendererPath = $RendererPath
@@ -58,6 +73,7 @@ $preview = [PSCustomObject]@{
     CurrentSHA256 = $currentHash
     BackupSHA256 = $backupHash
     Applied = $false
+    ProcessGuardApplied = $processGuardApplied
     SafeToRestore = ($blocking.Count -eq 0)
     BlockingProcesses = $blocking
     SafetyBackupPath = $null
@@ -98,6 +114,7 @@ $result = [PSCustomObject]@{
     CurrentSHA256 = $currentHash
     BackupSHA256 = $backupHash
     Applied = $true
+    ProcessGuardApplied = $processGuardApplied
     SafeToRestore = $true
     BlockingProcesses = @()
     SafetyBackupPath = $safetyBackupPath

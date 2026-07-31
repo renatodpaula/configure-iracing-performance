@@ -5,7 +5,9 @@ param(
     [string]$DisplayMode = 'monitor',
     [ValidateSet('Object', 'Json')]
     [string]$OutputFormat = 'Json',
-    [switch]$SkipHardware
+    [switch]$SkipHardware,
+    [ValidateRange(0, 10)]
+    [double]$ProcessSampleSeconds = 2
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,6 +86,151 @@ function Get-ProcessValue {
     }
 }
 
+function Get-PerformanceRelevantProcesses {
+    param([Parameter(Mandatory)][object[]]$RunningProcesses)
+
+    $rules = @(
+        [PSCustomObject]@{
+            Category = 'CaptureOrStreaming'
+            Pattern = '^(obs64|Streamlabs OBS|slobs|XSplit.*|Medal|NVIDIA Overlay|nvsphelper64|Overwolf|TwitchStudio|Bandicam)$'
+            MinimumWorkingSetMB = 0
+            Rationale = 'Capture and streaming software can consume render, copy, encode, memory, and disk resources.'
+            ReviewQuestion = 'Is this software required for recording or streaming in the target setup?'
+        },
+        [PSCustomObject]@{
+            Category = 'OverlayOrTelemetry'
+            Pattern = '^(RTSS|RTSSHooksLoader64|MSIAfterburner|Discord|Racelab.*|SimHub.*|CrewChief.*|iOverlay.*|Kapps.*|TradingPaints.*|trophi.*|MarvinsAIRA)$'
+            MinimumWorkingSetMB = 0
+            Rationale = 'Overlays and telemetry tools can hook the renderer, poll hardware, or update frequently.'
+            ReviewQuestion = 'Is this overlay, communication, or telemetry tool required while driving?'
+        },
+        [PSCustomObject]@{
+            Category = 'HardwareOrRgbUtility'
+            Pattern = '^(iCUE|Corsair.*|LightingService|ArmouryCrate.*|L-Connect.*|NZXT CAM|Razer.*|lghub.*|Logi.*|Fanatec.*|MOZA.*|AORUS.*|RGBFusion.*|Elgato.*|StreamDeck.*)$'
+            MinimumWorkingSetMB = 0
+            Rationale = 'Hardware and RGB utilities can use background CPU, but may be required for controls, audio, cooling, or lighting.'
+            ReviewQuestion = 'Does this utility provide a required device or control function for the session?'
+        },
+        [PSCustomObject]@{
+            Category = 'RemoteOrVirtualDisplay'
+            Pattern = '^(Parsec|Sunshine|Moonlight|spacedesk.*|Duet.*|VirtualDesktop.*|Oculus.*|Meta.*|WinUsbDisplay|AnyDesk|TeamViewer.*)$'
+            MinimumWorkingSetMB = 0
+            Rationale = 'Remote and virtual-display software can change the presentation path or consume GPU copy and encode resources.'
+            ReviewQuestion = 'Is this remote or virtual-display software required for the target display path?'
+        },
+        [PSCustomObject]@{
+            Category = 'BrowserOrLauncher'
+            Pattern = '^(chrome|msedge|firefox|steamwebhelper)$'
+            MinimumWorkingSetMB = 500
+            Rationale = 'Many browser or launcher processes can collectively use meaningful CPU, GPU, and memory.'
+            ReviewQuestion = 'Are these browser or launcher processes needed during the measured session?'
+        }
+    )
+
+    $candidates = @(
+        foreach ($rule in $rules) {
+            $matches = @($RunningProcesses | Where-Object { $_.ProcessName -match $rule.Pattern })
+            foreach ($group in @($matches | Group-Object ProcessName)) {
+                $workingSetBytes = 0
+                $cpuSeconds = 0.0
+                $ids = @()
+                foreach ($process in $group.Group) {
+                    $workingSet = Get-ProcessValue -Process $process -PropertyName 'WorkingSet64'
+                    $cpu = Get-ProcessValue -Process $process -PropertyName 'CPU'
+                    if ($null -ne $workingSet) {
+                        $workingSetBytes += [int64]$workingSet
+                    }
+                    if ($null -ne $cpu) {
+                        $cpuSeconds += [double]$cpu
+                    }
+                    $ids += $process.Id
+                }
+
+                $workingSetMB = [math]::Round($workingSetBytes / 1MB, 1)
+                if ($workingSetMB -lt $rule.MinimumWorkingSetMB) {
+                    continue
+                }
+
+                [PSCustomObject]@{
+                    Category = $rule.Category
+                    ProcessName = $group.Name
+                    InstanceCount = $group.Count
+                    Ids = @($ids)
+                    WorkingSetMB = $workingSetMB
+                    CumulativeCPUSeconds = [math]::Round($cpuSeconds, 2)
+                    Rationale = $rule.Rationale
+                    ReviewQuestion = $rule.ReviewQuestion
+                }
+            }
+        }
+    )
+
+    return @($candidates | Sort-Object Category, ProcessName)
+}
+
+function Add-ProcessActivitySample {
+    param(
+        [Parameter(Mandatory)][object[]]$Candidates,
+        [Parameter(Mandatory)][double]$DurationSeconds
+    )
+
+    $startingCpu = @{}
+    if ($DurationSeconds -gt 0 -and $Candidates.Count -gt 0) {
+        foreach ($id in @($Candidates.Ids | Select-Object -Unique)) {
+            $process = Get-Process -Id $id -ErrorAction SilentlyContinue
+            if ($null -ne $process) {
+                $cpu = Get-ProcessValue -Process $process -PropertyName 'CPU'
+                if ($null -ne $cpu) {
+                    $startingCpu[$id] = [double]$cpu
+                }
+            }
+        }
+        Start-Sleep -Milliseconds ([int][math]::Round($DurationSeconds * 1000))
+    }
+
+    $sampled = @(
+        foreach ($candidate in $Candidates) {
+            $sampleCpuSeconds = 0.0
+            if ($DurationSeconds -gt 0) {
+                foreach ($id in $candidate.Ids) {
+                    if (-not $startingCpu.ContainsKey($id)) {
+                        continue
+                    }
+                    $process = Get-Process -Id $id -ErrorAction SilentlyContinue
+                    if ($null -eq $process) {
+                        continue
+                    }
+                    $endingCpu = Get-ProcessValue -Process $process -PropertyName 'CPU'
+                    if ($null -ne $endingCpu) {
+                        $sampleCpuSeconds += [math]::Max(0, ([double]$endingCpu - $startingCpu[$id]))
+                    }
+                }
+            }
+
+            [PSCustomObject]@{
+                Category = $candidate.Category
+                ProcessName = $candidate.ProcessName
+                InstanceCount = $candidate.InstanceCount
+                Ids = $candidate.Ids
+                WorkingSetMB = $candidate.WorkingSetMB
+                CumulativeCPUSeconds = $candidate.CumulativeCPUSeconds
+                SampleDurationSeconds = $DurationSeconds
+                SampleCPUSeconds = if ($DurationSeconds -gt 0) { [math]::Round($sampleCpuSeconds, 3) } else { $null }
+                ApproxOneCorePercent = if ($DurationSeconds -gt 0) {
+                    [math]::Round(($sampleCpuSeconds / $DurationSeconds) * 100, 1)
+                }
+                else {
+                    $null
+                }
+                Rationale = $candidate.Rationale
+                ReviewQuestion = $candidate.ReviewQuestion
+            }
+        }
+    )
+
+    return $sampled
+}
+
 $documents = [Environment]::GetFolderPath('MyDocuments')
 $iracingDocuments = Join-Path $documents 'iRacing'
 $rendererFiles = @{
@@ -159,8 +306,9 @@ $monitorKeys = @(
     'ScreenWidth', 'ScreenAngles'
 )
 
+$runningProcesses = @(Get-Process -ErrorAction SilentlyContinue)
 $allProcesses = @(
-    Get-Process -ErrorAction SilentlyContinue |
+    $runningProcesses |
         Where-Object { $_.ProcessName -like 'iRacing*' } |
         ForEach-Object {
             [PSCustomObject]@{
@@ -176,6 +324,32 @@ $blockingProcesses = @(
     $allProcesses | Where-Object {
         $_.ProcessName -ieq 'iRacingUI' -or $_.ProcessName -imatch '^iRacingSim'
     }
+)
+$performanceRelevantProcesses = @(
+    Add-ProcessActivitySample `
+        -Candidates @(Get-PerformanceRelevantProcesses -RunningProcesses $runningProcesses) `
+        -DurationSeconds $ProcessSampleSeconds
+)
+$topProcessesByWorkingSet = @(
+    $runningProcesses |
+        Where-Object { $_.ProcessName -notmatch '^(Idle|System|Memory Compression)$' } |
+        Group-Object ProcessName |
+        ForEach-Object {
+            $workingSetBytes = 0
+            foreach ($process in $_.Group) {
+                $workingSet = Get-ProcessValue -Process $process -PropertyName 'WorkingSet64'
+                if ($null -ne $workingSet) {
+                    $workingSetBytes += [int64]$workingSet
+                }
+            }
+            [PSCustomObject]@{
+                ProcessName = $_.Name
+                InstanceCount = $_.Count
+                WorkingSetMB = [math]::Round($workingSetBytes / 1MB, 1)
+            }
+        } |
+        Sort-Object WorkingSetMB -Descending |
+        Select-Object -First 10
 )
 
 $processor = @()
@@ -210,20 +384,21 @@ if (-not $SkipHardware) {
     $nvidiaSmi = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue
     if ($nvidiaSmi) {
         $gpuRows = @(
-            & $nvidiaSmi.Source --query-gpu=name,utilization.gpu,power.draw,temperature.gpu,memory.used,memory.total --format=csv,noheader,nounits
+            & $nvidiaSmi.Source --query-gpu=name,utilization.gpu,utilization.encoder,power.draw,temperature.gpu,memory.used,memory.total --format=csv,noheader,nounits
         )
         if ($LASTEXITCODE -eq 0) {
             $nvidiaSnapshot = @(
                 foreach ($row in $gpuRows) {
                     $parts = @($row -split ',' | ForEach-Object { $_.Trim() })
-                    if ($parts.Count -ge 6) {
+                    if ($parts.Count -ge 7) {
                         [PSCustomObject]@{
                             Name = $parts[0]
                             UtilizationPercent = $parts[1]
-                            PowerWatts = $parts[2]
-                            TemperatureC = $parts[3]
-                            MemoryUsedMiB = $parts[4]
-                            MemoryTotalMiB = $parts[5]
+                            EncoderUtilizationPercent = $parts[2]
+                            PowerWatts = $parts[3]
+                            TemperatureC = $parts[4]
+                            MemoryUsedMiB = $parts[5]
+                            MemoryTotalMiB = $parts[6]
                         }
                     }
                 }
@@ -249,6 +424,10 @@ $result = [PSCustomObject]@{
         All = $allProcesses
         Blocking = $blockingProcesses
         SafeToEdit = ($blockingProcesses.Count -eq 0)
+        PerformanceRelevant = $performanceRelevantProcesses
+        ReviewRequired = ($performanceRelevantProcesses.Count -gt 0)
+        ReviewNote = 'Presence is not proof of a bottleneck. Explain each candidate and ask whether it is required before changing or closing it.'
+        TopByWorkingSet = $topProcessesByWorkingSet
     }
     Hardware = [PSCustomObject]@{
         Processor = $processor

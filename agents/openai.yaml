@@ -1,4 +1,4 @@
 interface:
   display_name: "iRacing Performance"
-  short_description: "Otimize graficos e FPS no iRacing"
-  default_prompt: "Use $configure-iracing-performance para definir meu objetivo visual, preservar o replay e testar melhorias de FPS com rollback."
+  short_description: "Otimize qualidade, FPS e estabilidade no iRacing"
+  default_prompt: "Use $configure-iracing-performance para diagnosticar gargalos por evidencia e otimizar qualidade e FPS com testes por faixa."

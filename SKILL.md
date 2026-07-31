@@ -1,82 +1,82 @@
 ---
 name: configure-iracing-performance
-description: Diagnose and tune iRacing monitor or VR graphics for a requested stable FPS target. Use when a driver asks to improve iRacing FPS, match monitor refresh rate, investigate a frame-rate cap, tune triple-monitor performance, or optimize graphics after a hardware or display change.
+description: Diagnose, test, and safely tune iRacing driving and replay graphics for single-monitor, triple-monitor, or VR systems. Use when a driver wants visual immersion, the best image quality at a stable FPS target, maximum consistency and low latency, help with stutter or reprojection, an explanation for an FPS cap, renderer-file tuning, or optimization after a hardware or display change.
 ---
 
 # iRacing Performance Configuration
 
-Use this workflow to reach a repeatable, stable FPS target while preserving the user's preferred image quality.
+Treat every recommendation as a measured experiment. Prefer the best image quality that satisfies the driver's chosen goal; never accept a preset or documentation recommendation when a same-scenario test performs or feels worse.
+
+## Establish the Goal First
+
+If the request does not already answer these points, ask one focused opening question before diagnosing, then stop and wait for the answer. Do not bundle target FPS, refresh rate, synchronization, hardware, or test-scenario questions into the opening message:
+
+`Will you use 1 monitor, 3 monitors, or VR, and is your priority maximum visual immersion, balanced quality at a specific stable FPS, or maximum consistency/lowest latency?`
+
+When the display path is already known, ask only for the objective. When the objective is missing, always present these three explicit choices in the user's language and end the response:
+
+1. Maximum visual immersion, accepting lower FPS.
+2. Best graphics possible at a specific stable FPS.
+3. Maximum consistency and lowest latency, accepting larger visual reductions.
+
+Do not infer that a request to "improve performance" excludes visual immersion. Continue the technical inventory only in the next turn after the user chooses.
+
+Then collect only missing details:
+
+- For **visual immersion**, agree on the minimum acceptable driving FPS.
+- For **balanced**, record the stable FPS target and maximize quality inside that budget.
+- For **maximum consistency**, record the FPS or native VR cadence, latency preference, and acceptable visual trade-offs.
+- For monitors, confirm resolution, monitor count, Windows refresh rate, and adaptive-sync/V-Sync use.
+- For VR, confirm headset, runtime, connection, native refresh rate, render resolution, and reprojection or motion smoothing.
+- Define the repeatable test: car, track, session type, time, weather, grid size, and the demanding scene to compare.
+
+## Keep Driving and Replay Independent
+
+- Diagnose and tune driving from `[Graphics Options]`.
+- Read `[Replay Graphics]` separately and preserve it by default.
+- Prefer high or maximum replay quality because replay usually does not require racing-level FPS and may be used to record cinematic takes.
+- Change replay settings only when the driver explicitly requests it. For real-time recording, ask for the capture resolution and FPS target first.
+- Never copy a monitor profile wholesale to VR or a driving profile wholesale to replay.
 
 ## Guardrails
 
-- Ask first: `Will this run on 1 monitor, 3 monitors, or VR?` Do not diagnose or edit until the display path is known.
-- Do not edit a renderer file while `iRacingUI` or an iRacing simulation process is running. The UI can overwrite external edits.
-- Inspect first. Back up the exact renderer file before the first change.
-- Change one performance lever per test. Record the measured FPS, scene, and whether the GPU or CPU is saturated.
-- Do not claim a target is achieved from a file setting alone. Require an in-session measurement in the same car, track, weather, and grid size.
-- Treat 1–2 FPS below a configured cap as effectively capped when frame time is stable.
-- Preserve output resolution, monitor topology, and FOV unless the driver explicitly accepts a change.
-
-## Choose the Display Path
-
-1. Ask the driver to select **1 monitor**, **3 monitors**, or **VR**.
-2. For 1 or 3 monitors, ask the target FPS and monitor refresh rate. Confirm the output resolution and monitor count before tuning.
-3. For VR, ask headset model, connection type when relevant, selected runtime (OpenXR, OpenVR, or Oculus), native refresh-rate target, and whether reprojection/motion smoothing is enabled. Do not treat synthetic/reprojected frames as native performance.
-4. Use the matching renderer: `rendererDX11Monitor.ini` for monitors, `rendererDX11OpenXR.ini`, `rendererDX11OpenVR.ini`, or `rendererDX11Oculus.ini` for VR. Never transfer a monitor profile wholesale to VR.
+- Diagnose only when the user asks for analysis. Apply changes only when the user asks to tune, optimize, or make the proposed change.
+- Do not edit while `iRacingUI` or an iRacing simulation process is running.
+- Use the exact renderer for the selected display mode. Do not fall back to a different renderer.
+- Prefer supported in-sim controls. Use direct INI edits only when the intended section and key are verified.
+- Before the first file edit, make a backup and record the original SHA-256 hash.
+- Preserve resolution, monitor topology, FOV, and replay quality unless the driver accepts a change.
+- Change one performance lever per test. A lever may require tightly coupled keys, such as enabling a cap and setting its value.
 
 ## Diagnose
 
-1. Run `scripts/diagnose.ps1 -DisplayMode <monitor|openxr|openvr|oculus>` to collect active iRacing processes, renderer file, graphics options, display refresh rate, and NVIDIA load when available.
-2. Confirm the selected renderer file matches the launch display mode.
-3. Verify actual Windows refresh rate, `VerticalSync`, `LimitFrameRate`, and `DesiredFPSLimit`. Do not assume `RefreshRate` matters in windowed mode.
-4. Establish a baseline in a repeatable session. Read the in-sim FPS meter and note GPU/CPU bars.
+1. Read [references/metrics.md](references/metrics.md).
+2. Read [references/monitor.md](references/monitor.md) for one or three monitors, or [references/vr.md](references/vr.md) for VR.
+3. Run:
 
-## Interpret the Result
+   ```powershell
+   scripts/diagnose.ps1 -DisplayMode <monitor|openxr|openvr|oculus> -OutputFormat Json
+   ```
 
-| Evidence | Interpretation | First response |
-| --- | --- | --- |
-| FPS matches a configured cap | Intentional limiter | Set the requested cap only if it is safe for the display and desired by the driver. |
-| GPU is near 95–100% | GPU-bound | Reduce GPU effects, then use FSR progressively. |
-| CPU bar is saturated while GPU is not | CPU-bound | Reduce cars, mirrors, shadows, and object/event detail; do not expect FSR to help. |
-| FPS varies greatly by grid or track | Scene-bound | Test with the target race conditions and tune cars, mirrors, and LOD. |
-| Renderer settings revert | UI overwrote the file | Close all iRacing processes before editing and verify the saved file afterward. |
+4. Confirm `Renderer.MatchesDisplayMode`, inspect `Processes.Blocking`, and use `Config.DrivingGraphics` for the driving diagnosis. Treat `Config.ReplayGraphics` as an independent high-quality profile.
+5. Establish the in-session baseline in the agreed scenario. Record FPS plus iRacing `R`, `G`, and `T` frame times. Treat GPU-utilization snapshots as supporting evidence only.
 
-## Tune Monitor Rendering
+## Tune as an Experiment
 
-Work in this order and retest after each change:
+1. Identify the limiting evidence, not merely a low FPS number.
+2. Propose one change with its expected benefit, visual cost, restart requirement, and rollback path.
+3. Prefer changing the setting in iRacing. If an INI edit is required, preview it first:
 
-1. Disable costly effects first: full-resolution SSR, SSAO, dynamic shadows, excessive particle quality, and unnecessary cubemaps.
-2. For CPU pressure, reduce `MaxCarsToDraw`, `MaxCarsToDrawInMirrors`, crowd/pit/event detail, and mirror detail. Keep enough cars for the driver's race use case.
-3. For a GPU-bound triple-monitor setup, retain the desktop output resolution and use iRacing FSR (`ResolutionScaling`) only after simpler changes. Ensure AA remains enabled: MSAA, FXAA, or SMAA.
-4. Use FSR in order: `0` off, `1` Ultra, `2` Quality, then higher modes only if the driver accepts lower image quality. Restart the simulator after changing it.
-5. Keep `LimitFrameRate=1`, `DesiredFPSLimit=<target>`, and `VerticalSync=0` only when the driver prefers a fixed cap without V-Sync. Do not alter adaptive-sync or NVIDIA settings without inspecting them and obtaining user approval.
+   ```powershell
+   scripts/update-renderer.ps1 -RendererPath <path> -Section 'Graphics Options' -Set 'Key=Value' -ExpectedHash <sha256>
+   ```
 
-## Tune VR Rendering
+4. Show the preview. Apply only within the user's requested tuning scope by adding `-Apply`.
+5. Restart when required and repeat the exact baseline scenario.
+6. Compare before and after. Keep the change only when it improves the selected goal without an unacceptable trade-off.
+7. If FPS, frame time, smoothness, latency, stability, or perceived quality regresses, restore the generated backup with `scripts/restore-renderer.ps1` and retain the last measured-good profile.
+8. Continue with the next single lever only after recording the result.
 
-1. Set a target equal to the headset's native refresh cadence. Evaluate stable frame time and headset smoothness, not the desktop mirror's FPS alone.
-2. Keep the chosen OpenXR/OpenVR/Oculus runtime fixed during a test. Do not switch runtimes, iRacing settings, and headset software settings in one iteration.
-3. Reduce CPU-bound settings first when the CPU frame time is limiting: cars, mirror draw count/detail, pit/event/crowd objects, and dynamic shadows.
-4. For GPU-bound VR, test one lever at a time: iRacing FSR (`ResolutionScaling`), the runtime render resolution, then VR-specific stereo efficiency. Record visual quality at the center and edges.
-5. For supported NVIDIA/OpenXR headsets, consider SPS or foveated rendering only after a baseline. Use fixed or eye-tracked foveation only when the headset/runtime reports support; do not hand-edit foveation values without a backup and a restart.
-6. Treat `ResolutionScalePct` in the OpenXR renderer as a separate control from iRacing FSR. Change only one of them per test.
-7. If wireless VR is used, separately diagnose network/encoding latency. A smooth GPU frame time does not rule out streaming stutter.
+## Finish with Evidence
 
-## Apply and Validate
-
-1. With iRacing fully closed, make the smallest selected change.
-2. Verify the changed keys immediately after writing.
-3. Launch iRacing, restart the simulation when a graphics setting requires it, and retest the same scenario.
-4. If FPS regresses, revert only the last tested change and preserve the last measured-good profile.
-5. Report the active renderer path, target cap, observed FPS, bottleneck, and every intentional visual trade-off.
-
-## Triple-Monitor Notes
-
-- A 7680×1440 triple-monitor layout renders over 11 million output pixels. A high-end GPU can still be GPU-bound in dense sessions.
-- Separate views per monitor improve geometry but cost performance. Do not disable them unless the driver accepts the visual and geometric compromise.
-- Do not compare FPS from different tracks, time of day, weather, or car grids as a configuration regression.
-
-## VR Notes
-
-- Prefer OpenXR as the first runtime to test when the headset supports it. Fall back only for compatibility or a measured regression.
-- Restart the simulation after changes that iRacing marks as requiring a restart, including resolution scaling and VR mode changes.
-- Save VR and monitor profiles independently. A performance result is valid only for the tested headset, runtime, refresh rate, and render resolution.
+Report the display path, objective, active renderer, driving and replay separation, test scenario, baseline and final FPS/frame times, bottleneck evidence, changes kept, changes reverted, and intentional visual trade-offs. State that the target is achieved only after an in-session comparison; otherwise report the result as provisional.

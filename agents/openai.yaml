@@ -1,0 +1,4 @@
+interface:
+  display_name: "iRacing Performance"
+  short_description: "Diagnostique e otimize FPS no iRacing"
+  default_prompt: "Use $configure-iracing-performance para diagnosticar e otimizar meu iRacing para uma meta de FPS."

@@ -2,6 +2,8 @@
 
 [Português](#português) | [English](#english)
 
+> **Version 2 / Versão 2:** objective-first tuning, section-aware diagnosis, independent driving/replay profiles, measured before/after tests, atomic backup, and verified rollback. [Documentation / Documentação](https://github.com/renatodpaula/configure-iracing-performance/wiki)
+
 ## English
 
 `configure-iracing-performance` is a Codex skill for diagnosing, testing, and safely tuning iRacing graphics on one monitor, triple monitors, or VR.

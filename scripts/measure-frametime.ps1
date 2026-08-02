@@ -141,20 +141,38 @@ else {
     if (Test-Path -LiteralPath $csvPath) { Remove-Item -LiteralPath $csvPath -Force }
 
     # Flags used here are supported across PresentMon 1.6+ and 2.x.
+    # --no_console_stats suppresses PresentMon's "stdout does not support statistics" warning.
     $pmArgs = @(
         '--process_name', $ProcessName,
         '--output_file', $csvPath,
         '--timed', "$DurationSeconds",
         '--terminate_after_timed',
-        '--stop_existing_session'
+        '--stop_existing_session',
+        '--no_console_stats'
     )
     if ($WarmupSeconds -gt 0) { $pmArgs += @('--delay', "$WarmupSeconds") }
 
-    & $PresentMonPath @pmArgs 2>&1 | Out-Null
-    $pmExit = $LASTEXITCODE
+    # Do NOT use 2>&1 on the native exe: under $ErrorActionPreference='Stop', PowerShell 5.1
+    # wraps native stderr lines as terminating NativeCommandError (PresentMon always emits at
+    # least one warning). Route stderr to a log and judge success by exit code + CSV instead.
+    $pmErrLog = Join-Path $OutDir "$safeLabel.pmerr.log"
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $PresentMonPath @pmArgs 2> $pmErrLog | Out-Null
+        $pmExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousEap
+    }
+    $pmErrText = ''
+    if (Test-Path -LiteralPath $pmErrLog) {
+        $pmErrText = (Get-Content -LiteralPath $pmErrLog -Raw)
+        Remove-Item -LiteralPath $pmErrLog -Force -ErrorAction SilentlyContinue
+    }
 
     if (-not (Test-Path -LiteralPath $csvPath -PathType Leaf)) {
-        throw "PresentMon exited with code $pmExit and produced no capture. Confirm the terminal is elevated and '$ProcessName' is presenting frames."
+        throw "PresentMon exited with code $pmExit and produced no capture. Confirm the terminal is elevated and '$ProcessName' is presenting frames.`nPresentMon stderr: $pmErrText"
     }
 }
 

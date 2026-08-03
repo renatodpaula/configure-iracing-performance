@@ -108,6 +108,64 @@ finally {
     }
 }
 
+# --- measure-frametime.ps1 (CSV reduction) and compare-runs.ps1 --------------
+$measure = Join-Path $root 'scripts\measure-frametime.ps1'
+$compare = Join-Path $root 'scripts\compare-runs.ps1'
+$csvFixture = Join-Path $PSScriptRoot 'fixtures\presentmon-sample.csv'
+
+$measureDir = Join-Path ([System.IO.Path]::GetTempPath()) "iracing-measure-$([guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Path $measureDir | Out-Null
+try {
+    $stats = & $measure -Label sample -FromCsv $csvFixture -OutDir $measureDir -OutputFormat Object
+    Assert-Equal $stats.SampleCount 9 'measure-frametime miscounted valid frames.'
+    Assert-Equal $stats.SkippedRows 2 'measure-frametime did not skip dropped/repeated frames.'
+    Assert-Equal $stats.FrameTimeColumn 'FrameTime' 'measure-frametime picked the wrong frame-time column.'
+    Assert-Equal $stats.MedianFPS 100 'measure-frametime median FPS is wrong.'
+    Assert-Equal $stats.AvgFPS 90 'measure-frametime average FPS is wrong.'
+    Assert-Equal $stats.LikelyBoundBy 'GPU' 'measure-frametime bound attribution is wrong.'
+    Assert-True (Test-Path -LiteralPath $csvFixture) 'measure-frametime deleted the source CSV in reduce mode.'
+
+    function Save-Stats {
+        param([string]$Name, [double]$Avg, [double]$P1, [double]$P01, [double]$Std, [double]$P999)
+        $obj = [PSCustomObject]@{
+            Label = $Name; AvgFPS = $Avg; OnePercentLowFPS = $P1
+            PointOnePercentLowFPS = $P01; StdDevFrameTimeMs = $Std; P999FrameTimeMs = $P999
+        }
+        $path = Join-Path $measureDir "$Name.json"
+        $obj | ConvertTo-Json | Set-Content -LiteralPath $path -Encoding UTF8
+        return $path
+    }
+    $b1 = Save-Stats 'baseline-1' 100 95 90 1.0 11.5
+    $b2 = Save-Stats 'baseline-2' 101 96 91 1.1 11.8
+    $candKeep = Save-Stats 'cand-keep' 96 92 88 1.2 12.5     # quality-up drop, still above target
+    $candRevert = Save-Stats 'cand-revert' 92 87 82 1.4 13.0 # below target
+    $candNoise = Save-Stats 'cand-noise' 100 95.5 90.5 1.05 11.6
+    $candSmooth = Save-Stats 'cand-smooth' 99 94 89 0.6 9.5  # consistency win
+
+    $keep = & $compare -Baseline @($b1, $b2) -Candidate $candKeep -Objective balanced -TargetFPS 90 -ChangeType quality-up -OutputFormat Object
+    Assert-Equal $keep.SuggestedDecision 'keep' 'compare-runs should keep a quality-up change that holds the target.'
+    Assert-Equal $keep.TargetMet $true 'compare-runs target-met check failed for the keep case.'
+    Assert-Equal $keep.HumanJudgmentRequired $true 'compare-runs should flag human judgment for a quality-up change.'
+
+    $revert = & $compare -Baseline @($b1, $b2) -Candidate $candRevert -Objective balanced -TargetFPS 90 -ChangeType quality-up -OutputFormat Object
+    Assert-Equal $revert.SuggestedDecision 'revert' 'compare-runs should revert when the 1% low falls below target.'
+    Assert-Equal $revert.TargetMet $false 'compare-runs should report target not met for the revert case.'
+
+    $noise = & $compare -Baseline @($b1, $b2) -Candidate $candNoise -Objective balanced -TargetFPS 90 -ChangeType neutral -OutputFormat Object
+    Assert-Equal $noise.SuggestedDecision 'inconclusive' 'compare-runs should treat within-variance shifts as inconclusive.'
+
+    $smooth = & $compare -Baseline @($b1, $b2) -Candidate $candSmooth -Objective consistency -TargetFPS 90 -ChangeType performance-up -OutputFormat Object
+    Assert-Equal $smooth.SuggestedDecision 'keep' 'compare-runs should keep a meaningful consistency improvement.'
+
+    $singleBaseline = & $compare -Baseline @($b1) -Candidate $candNoise -Objective balanced -TargetFPS 90 -OutputFormat Object
+    Assert-True (-not [string]::IsNullOrWhiteSpace($singleBaseline.ConfidenceNote)) 'compare-runs should warn when only one baseline is provided.'
+}
+finally {
+    if (Test-Path -LiteralPath $measureDir) {
+        Remove-Item -LiteralPath $measureDir -Recurse -Force
+    }
+}
+
 [PSCustomObject]@{
     Passed = $true
     Tests = @(
@@ -123,6 +181,10 @@ finally {
         'atomic update and backup',
         'driving/replay separation',
         'replay protection',
-        'verified restore'
+        'verified restore',
+        'presentmon csv reduction',
+        'measured decision: keep/revert/inconclusive',
+        'consistency-objective decision',
+        'single-baseline confidence warning'
     )
 }

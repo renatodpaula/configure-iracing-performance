@@ -72,6 +72,27 @@ Then collect only missing details:
 9. When a symptom extends beyond iRacing or correlates with an external program, device, or recent system change, stop graphics tuning, rank plausible causes, and isolate that branch with reversible one-variable tests. Resume renderer tuning only after resolving or excluding it.
 10. Establish natural variance with repeated baseline windows in the agreed scenario. Record FPS, `R`, `G`, and `T` as ranges rather than single values. Treat GPU-utilization snapshots and process presence as supporting evidence only.
 
+## Measure (automated, preferred when available)
+
+Read [references/measure.md](references/measure.md). When PresentMon is available, replace hand-read meter ranges with captured frame-time statistics — this is the objective evidence the decision rules below assume. When it is not, keep reading the in-sim meters as in [references/metrics.md](references/metrics.md).
+
+1. Establish natural variance with **two or more** baseline windows in the agreed scenario, each captured the same way (an elevated terminal is required):
+
+   ```powershell
+   scripts/measure-frametime.ps1 -Label baseline-1 -DurationSeconds 60
+   scripts/measure-frametime.ps1 -Label baseline-2 -DurationSeconds 60
+   ```
+
+   Each run writes a stats JSON (median/avg FPS, 1% low, 0.1% low, frame-time percentiles, frame-time standard deviation, and CPU/GPU-busy means when the PresentMon build exposes them). `CPUBusy` corresponds to the `R` meter, `GPUBusy` to the `G` meter, and `FrameTime` to the `T` meter.
+2. After each single lever change, capture a candidate window the same way (e.g. `-Label cap-90`), restarting to the same session state first when required.
+3. Judge the result against the baseline envelope instead of eyeballing it:
+
+   ```powershell
+   scripts/compare-runs.ps1 -Baseline runs/baseline-1.json,runs/baseline-2.json -Candidate runs/cap-90.json -Objective balanced -TargetFPS 90 -ChangeType quality-up
+   ```
+
+   `SuggestedDecision` (keep / revert / inconclusive) and `TargetMet` cover the measured side only. When `HumanJudgmentRequired` is true, the visual or latency trade-off still has to be judged by the driver — report both and let them decide.
+
 ## Tune as an Experiment
 
 1. Identify the limiting evidence, not merely a low FPS number.
@@ -84,7 +105,7 @@ Then collect only missing details:
 
 4. Show the preview. Apply only within the user's requested tuning scope by adding `-Apply`.
 5. Restart when required and repeat the exact baseline scenario for the same duration and at the same session state. Reset the session or use an A/B/A comparison when simulated time, shadows, weather, or track state can drift.
-6. Compare before and after ranges against the established natural-variance envelope. Treat overlapping ranges and small shifts as inconclusive unless the result repeats.
+6. Compare before and after ranges against the established natural-variance envelope. Prefer `scripts/compare-runs.ps1` on captured windows; otherwise compare hand-read ranges. Treat overlapping ranges and small shifts as inconclusive unless the result repeats.
 7. Keep the change only when a repeatable improvement advances the selected goal without an unacceptable trade-off.
 8. Revert a repeatable regression. For an inconclusive renderer change, restore the last measured-good profile rather than accumulating unproven changes.
 9. Continue with the next single lever only after recording the result as `keep`, `revert`, or `inconclusive`.

@@ -1,0 +1,12 @@
+Application,ProcessID,FrameType,Dropped,FrameTime,CPUBusy,GPUBusy
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,1,10,4,6
+iRacingSim64DX11.exe,12345,Repeated,0,10,4,6
+iRacingSim64DX11.exe,12345,Application,0,20,8,12

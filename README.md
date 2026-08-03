@@ -6,7 +6,7 @@
 
 ## English
 
-`configure-iracing-performance` is a Codex skill for diagnosing, testing, and safely tuning iRacing graphics on one monitor, triple monitors, or VR.
+`configure-iracing-performance` is a skill for diagnosing, testing, and safely tuning iRacing graphics on one monitor, triple monitors, or VR. It runs on **Codex** and on **Claude Code** from the same source: one `SKILL.md`, one `references/`, one `scripts/`.
 
 It does not apply a universal preset. It first establishes the driver's objective:
 
@@ -22,16 +22,30 @@ The skill reads and tunes `[Graphics Options]` for driving without mixing it wit
 
 Replay quality is preserved by default and should normally remain high or maximum. Replays do not usually require racing-level FPS and are often used to review incidents or record cinematic takes. Replay settings change only when explicitly requested; real-time capture also receives its own resolution and FPS target.
 
+### Install
+
+**Claude Code** — the repository is the skill directory; installing means linking it into a skills folder:
+
+```bash
+scripts/install-claude-skill.sh              # ~/.claude/skills (symlink, tracks the repo)
+scripts/install-claude-skill.sh --copy       # independent snapshot
+scripts/install-claude-skill.sh --project .  # <project>/.claude/skills
+```
+
+On Windows, use `scripts\install-claude-skill.ps1` (`-Copy`, `-Scope Project -ProjectPath .`, `-Force`). Then invoke it with `/configure-iracing-performance`. See [agents/claude.md](agents/claude.md).
+
+**Codex** — the interface metadata lives in [agents/openai.yaml](agents/openai.yaml); install the repository in the folder Codex reads skills from.
+
 ### Typical use
 
-Ask Codex, for example:
+Ask Codex or Claude, for example:
 
 - “Give me the best graphics possible while holding 144 FPS on triple 1440p monitors.”
 - “Prioritize immersion in VR, but keep at least 90 native FPS.”
 - “Find the cause of my iRacing stutters without changing anything yet.”
 - “Keep my replay graphics at maximum while optimizing race performance.”
 
-Codex will ask for the display path and objective when they are missing, collect a section-aware diagnosis, establish a baseline, change one performance lever, and compare the result before keeping it.
+The agent will ask for the display path and objective when they are missing, collect a section-aware diagnosis, establish a baseline, change one performance lever, and compare the result before keeping it.
 
 ### Included tools
 
@@ -43,7 +57,7 @@ Direct edits are blocked while iRacing UI or the simulator is running. Preview i
 
 ## Português
 
-`configure-iracing-performance` é uma skill do Codex para diagnosticar, testar e ajustar com segurança os gráficos do iRacing em um monitor, três monitores ou VR.
+`configure-iracing-performance` é uma skill para diagnosticar, testar e ajustar com segurança os gráficos do iRacing em um monitor, três monitores ou VR. Ela funciona no **Codex** e no **Claude Code** a partir da mesma fonte: um `SKILL.md`, um `references/`, um `scripts/`.
 
 Ela não aplica um preset universal. Primeiro, define o objetivo do piloto:
 
@@ -59,16 +73,30 @@ A skill lê e ajusta `[Graphics Options]` para a condução sem misturar esses v
 
 A qualidade do replay é preservada por padrão e normalmente deve permanecer alta ou máxima. Replay geralmente não exige o mesmo FPS da corrida e costuma ser usado para rever incidentes ou gravar takes cinematográficos. Suas configurações só mudam quando isso for pedido explicitamente; uma gravação em tempo real também recebe meta própria de resolução e FPS.
 
+### Instalação
+
+**Claude Code** — o próprio repositório é o diretório da skill; instalar significa ligá-lo a uma pasta de skills:
+
+```bash
+scripts/install-claude-skill.sh              # ~/.claude/skills (symlink, acompanha o repo)
+scripts/install-claude-skill.sh --copy       # cópia independente
+scripts/install-claude-skill.sh --project .  # <projeto>/.claude/skills
+```
+
+No Windows, use `scripts\install-claude-skill.ps1` (`-Copy`, `-Scope Project -ProjectPath .`, `-Force`). Depois chame com `/configure-iracing-performance`. Veja [agents/claude.md](agents/claude.md).
+
+**Codex** — os metadados de interface estão em [agents/openai.yaml](agents/openai.yaml); instale o repositório na pasta de skills lida pelo Codex.
+
 ### Exemplos de uso
 
-Peça ao Codex, por exemplo:
+Peça ao Codex ou ao Claude, por exemplo:
 
 - “Use o melhor gráfico possível mantendo 144 FPS em três monitores 1440p.”
 - “Priorize imersão no VR, mas mantenha pelo menos 90 FPS nativos.”
 - “Encontre a causa dos stutters no iRacing sem alterar nada ainda.”
 - “Mantenha o replay no máximo e otimize apenas o desempenho durante a corrida.”
 
-Quando faltarem informações, o Codex perguntará o modo de exibição e o objetivo, coletará um diagnóstico separado por seções, estabelecerá uma linha de base, mudará uma variável de desempenho e comparará o resultado antes de mantê-la.
+Quando faltarem informações, o agente perguntará o modo de exibição e o objetivo, coletará um diagnóstico separado por seções, estabelecerá uma linha de base, mudará uma variável de desempenho e comparará o resultado antes de mantê-la.
 
 ### Ferramentas incluídas
 

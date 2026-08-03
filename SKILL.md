@@ -54,6 +54,21 @@ Then collect only missing details:
 - Treat system-wide input, audio, video, or device stalls as a platform problem first. Pause renderer tuning until the symptom is isolated.
 - Identify an unfamiliar driver, virtual display, or device by process path, publisher, hardware IDs, and active resource use before proposing action. Prefer a reversible test; uninstall only with explicit authorization and a rollback path.
 
+## Run the Bundled Scripts
+
+The bundled scripts are PowerShell and must run on the Windows machine that runs iRacing.
+
+- Resolve `references/` and `scripts/` relative to this skill's own directory, not to the current working directory. The working directory is usually an unrelated project.
+- From a POSIX shell (Git Bash, WSL, the Claude Code `Bash` tool on Windows), invoke them through the interpreter:
+
+  ```bash
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>/scripts/diagnose.ps1" -DisplayMode monitor -OutputFormat Json
+  ```
+
+- From PowerShell directly, call the `.ps1` path with the same parameters.
+- Prefer `pwsh` when PowerShell 7 is present; the scripts also run on Windows PowerShell 5.1.
+- If the session is not on Windows, do not fabricate output. Ask the driver to run the command and paste the JSON back, then continue the diagnosis from that evidence.
+
 ## Diagnose
 
 1. Read [references/preflight.md](references/preflight.md).

@@ -98,8 +98,15 @@ function Get-PerformanceRelevantProcesses {
             ReviewQuestion = 'Is this software required for recording or streaming in the target setup?'
         },
         [PSCustomObject]@{
+            Category = 'SimulatorSupportControl'
+            Pattern = '^(SimHub.*)$'
+            MinimumWorkingSetMB = 0
+            Rationale = 'Simulator-support software may drive required dashboards, bass shakers, belt tensioners, motion, wind, LEDs, or telemetry consumers; preserve required functions and isolate only optional components.'
+            ReviewQuestion = 'Which SimHub functions and outputs are required and must remain active for every measured session?'
+        },
+        [PSCustomObject]@{
             Category = 'OverlayOrTelemetry'
-            Pattern = '^(RTSS|RTSSHooksLoader64|MSIAfterburner|Discord|Racelab.*|SimHub.*|CrewChief.*|iOverlay.*|Kapps.*|TradingPaints.*|trophi.*|MarvinsAIRA)$'
+            Pattern = '^(RTSS|RTSSHooksLoader64|MSIAfterburner|Discord|Racelab.*|CrewChief.*|iOverlay.*|Kapps.*|TradingPaints.*|trophi.*|MarvinsAIRA)$'
             MinimumWorkingSetMB = 0
             Rationale = 'Overlays and telemetry tools can hook the renderer, poll hardware, or update frequently.'
             ReviewQuestion = 'Is this overlay, communication, or telemetry tool required while driving?'
@@ -426,7 +433,7 @@ $result = [PSCustomObject]@{
         SafeToEdit = ($blockingProcesses.Count -eq 0)
         PerformanceRelevant = $performanceRelevantProcesses
         ReviewRequired = ($performanceRelevantProcesses.Count -gt 0)
-        ReviewNote = 'Presence is not proof of a bottleneck. Explain each candidate and ask whether it is required before changing or closing it.'
+        ReviewNote = 'Presence is not proof of a bottleneck. Explain each candidate and ask whether it is required before changing it. Preserve required simulator-support and hardware-control functions.'
         TopByWorkingSet = $topProcessesByWorkingSet
     }
     Hardware = [PSCustomObject]@{

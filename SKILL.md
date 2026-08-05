@@ -29,7 +29,7 @@ Then collect only missing details:
 - For monitors, confirm resolution, monitor count, Windows refresh rate, and adaptive-sync/V-Sync use.
 - For VR, confirm headset, runtime, connection, native refresh rate, render resolution, and reprojection or motion smoothing.
 - Define the repeatable test: car, track, session type, fixed session time, weather, grid size, camera, test duration, and the demanding scene to compare.
-- Confirm whether recording, streaming, telemetry, overlays, hardware utilities, or communication software must remain active in the target setup.
+- Confirm whether recording, streaming, telemetry, overlays, simulator-support/control software, hardware utilities, or communication software must remain active in the target setup. For SimHub or similar software, record the required outputs such as dashboards, bass shakers, belt tensioners, motion, wind, LEDs, and telemetry consumers.
 
 ## Keep Driving and Replay Independent
 
@@ -50,6 +50,7 @@ Then collect only missing details:
 - Change one performance lever per test. A lever may require tightly coupled keys, such as enabling a cap and setting its value.
 - Never terminate, disable, or reconfigure external software merely because it is present. Explain why each candidate may matter and ask whether it is intentional for the target scenario.
 - Preserve required capture, streaming, telemetry, communication, and peripheral software across every comparison; optimize around it as part of the system.
+- Treat SimHub and similar simulator-support software as part of the rig when it controls required physical or telemetry outputs. Keep the application and required outputs active for every baseline and retest. Investigate optional plugins, overlays, polling, or outputs individually instead of proposing that the entire application be closed. Never alter a belt tensioner, motion system, or other actuator without explicit authorization and a safe rollback path.
 - Do not keep or revert a change because of an isolated one- or two-FPS movement or a few tenths of a millisecond. Use ranges and repeated evidence.
 - Treat system-wide input, audio, video, or device stalls as a platform problem first. Pause renderer tuning until the symptom is isolated.
 - Identify an unfamiliar driver, virtual display, or device by process path, publisher, hardware IDs, and active resource use before proposing action. Prefer a reversible test; uninstall only with explicit authorization and a rollback path.
@@ -67,8 +68,8 @@ Then collect only missing details:
    ```
 
 6. Confirm `Renderer.MatchesDisplayMode`, inspect `Processes.Blocking`, and use `Config.DrivingGraphics` for the driving diagnosis. Treat `Config.ReplayGraphics` as an independent high-quality profile.
-7. Review every entry in `Processes.PerformanceRelevant` before changing graphics. For each entry, state the observed software, its category and rationale, then ask whether it must remain active. Do not infer that a recorder, overlay, telemetry tool, browser, or peripheral utility is unnecessary.
-8. If software must remain active, record only the workload details relevant to the observed symptom and keep the required setup active for every baseline and retest.
+7. Review every entry in `Processes.PerformanceRelevant` before changing graphics. For each entry, state the observed software, its category and rationale, then ask whether it must remain active. Do not infer that a recorder, overlay, telemetry tool, simulator-support application, browser, or peripheral utility is unnecessary.
+8. If software must remain active, record only the workload details relevant to the observed symptom and keep the required setup active for every baseline and retest. For SimHub, distinguish required hardware/telemetry outputs from optional overlays or plugins before proposing any isolated test.
 9. When a symptom extends beyond iRacing or correlates with an external program, device, or recent system change, stop graphics tuning, rank plausible causes, and isolate that branch with reversible one-variable tests. Resume renderer tuning only after resolving or excluding it.
 10. Establish natural variance with repeated baseline windows in the agreed scenario. Record FPS, `R`, `G`, and `T` as ranges rather than single values. Treat GPU-utilization snapshots and process presence as supporting evidence only.
 

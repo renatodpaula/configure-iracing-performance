@@ -22,6 +22,11 @@ $diagnose = Join-Path $root 'scripts\diagnose.ps1'
 $update = Join-Path $root 'scripts\update-renderer.ps1'
 $restore = Join-Path $root 'scripts\restore-renderer.ps1'
 $fixture = Join-Path $PSScriptRoot 'fixtures\renderer-sections.ini'
+$diagnoseSource = Get-Content -Raw -LiteralPath $diagnose
+
+Assert-True ($diagnoseSource -match "Category = 'SimulatorSupportControl'") 'Simulator-support process category is missing.'
+Assert-True ($diagnoseSource -match "Pattern = '\^\(SimHub\.\*\)\$'") 'SimHub is not classified as simulator-support software.'
+Assert-True ($diagnoseSource -match 'belt tensioners') 'Required SimHub hardware outputs are not documented in process rationale.'
 
 $parsed = & $diagnose -RendererPath $fixture -DisplayMode monitor -OutputFormat Object -SkipHardware -ProcessSampleSeconds 0
 Assert-Equal $parsed.Config.DrivingGraphics.MaxCarsToDraw '20' 'Driving and replay sections were mixed.'
@@ -115,6 +120,7 @@ finally {
         'structured JSON output',
         'performance-relevant process inventory',
         'process-review rationale',
+        'required SimHub workload classification',
         'missing renderer rejection',
         'dry-run integrity',
         'live-renderer process-guard scoping',

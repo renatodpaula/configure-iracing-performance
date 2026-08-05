@@ -16,7 +16,8 @@ Run this preflight after establishing the objective and before the first baselin
 Typical categories include:
 
 - **Capture or streaming:** OBS, Streamlabs, XSplit, Medal, NVIDIA Overlay, and similar tools can consume render, copy, encode, memory, and disk resources.
-- **Overlay or telemetry:** Discord overlays, RTSS, Racelab, SimHub, Crew Chief, and similar tools can hook the renderer or update frequently.
+- **Simulator support or control:** SimHub and similar tools may drive dashboards, bass shakers, belt tensioners, motion, wind, LEDs, or telemetry consumers. Treat required outputs as part of the rig, keep them active in every comparison, and isolate only optional plugins, overlays, polling, or outputs with authorization.
+- **Overlay or telemetry:** Discord overlays, RTSS, Racelab, Crew Chief, and similar tools can hook the renderer or update frequently.
 - **Hardware or RGB utilities:** peripheral, wheel, audio, cooling, and lighting software may use background resources but may also be required for driving.
 - **Remote or virtual display:** remote-desktop, virtual-monitor, and display-sharing tools can alter the display path or consume GPU resources.
 - **Browser or launcher:** many browser processes can collectively use meaningful CPU, GPU, and memory even when no single process looks large.
@@ -43,3 +44,4 @@ Before the baseline, record which candidates are:
 - not understood and awaiting the driver's decision.
 
 Do not begin graphics tuning while required software is still changing between runs.
+Do not classify SimHub as disposable overhead when it provides required simulator controls or feedback. Record those functions explicitly and optimize around them.

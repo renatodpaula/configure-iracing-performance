@@ -77,3 +77,7 @@ Quando faltarem informações, o Codex perguntará o modo de exibição e o obje
 - `scripts/restore-renderer.ps1`: mostra uma prévia e restaura o backup gerado, preservando também a configuração substituída como cópia de segurança.
 
 Edições diretas são bloqueadas enquanto a interface ou o simulador do iRacing estiverem abertos. A prévia é o comportamento padrão; alterações exigem `-Apply`.
+
+## Créditos
+
+Autor: Renato de Paula — Instagram: [@mrupgrade.simracing](https://www.instagram.com/mrupgrade.simracing/)

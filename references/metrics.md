@@ -70,6 +70,31 @@ Calculate other budgets as `1000 / target FPS`.
 
 A no-car pit-box test is useful for detecting caps and large system overhead, but it cannot certify a racing target. Certify the target only in the representative workload the driver actually requires, including any required background workload and a meaningful car/grid load. If the driver declines that test, preserve the chosen configuration and label the result provisional.
 
+## Control information value
+
+Maintain separate records for independent outcomes. For example, an interface opening reliably, a capability being exposed, a feature operating, and a performance target being met are different claims and require different evidence.
+
+Before each test:
+
+1. Name the hypothesis and causal layer.
+2. Confirm the required capability or prerequisite exists in the active path.
+3. State the expected observable relationship.
+4. List the plausible results and the decision each one changes.
+5. Define the stopping rule.
+
+Do not run a test if all plausible results lead to the same next action. Prefer automated, read-only evidence when it can answer the same question as a manual test.
+
+For a parameter sweep, two sufficiently separated points are normally enough when both produce the same invariant result contrary to the predicted relationship. Do not request a third point unless it tests a different boundary, threshold, or mechanism. After a stopping rule is reached, move to another causal layer rather than changing adjacent settings in the same hypothesis family.
+
+Classify each supporting item as:
+
+- **Documented:** stated by an authoritative source for the applicable conditions.
+- **Observed:** directly measured or reproduced in the active setup.
+- **Inferred:** the best explanation of the observations, but not independently isolated.
+- **Unverified:** plausible but not yet tested or confirmed.
+
+Stop the investigation when the remaining tests cannot change the practical decision, add negligible information, or carry disproportionate disruption or risk. A valid final classification can be resolved, unavailable in the active path, unsupported, not reproduced, inconclusive, or provisional.
+
 Use this result record:
 
 ```text
@@ -78,11 +103,18 @@ Objective and target:
 Required background software:
 Window duration and repetitions:
 Change:
+Hypothesis and causal layer:
+Capability prerequisites:
+Expected distinguishing results:
+Decision affected by each result:
+Stopping rule:
 Before FPS range / R range / G range / T range:
 After FPS range / R range / G range / T range:
 Natural-variance envelope:
+Evidence classification:
 Visual or latency impact:
 Decision: keep / revert / inconclusive
+Next allowed branch:
 ```
 
 ## Official references

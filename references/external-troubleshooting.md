@@ -6,6 +6,8 @@ Read only the section supported by the observed symptom or active setup. These a
 
 If software is part of the real use case, keep it active for every comparison and optimize around it. Examples include recording, streaming, telemetry, communication, overlays, and peripheral control.
 
+For SimHub or similar simulator-support software, inventory the required outputs before testing: dashboards, bass shakers, belt tensioners, motion, wind, LEDs, and telemetry consumers. Preserve the application and all required outputs. If its activity correlates with the symptom, test one optional plugin, overlay, polling source, or output at a time. Do not use closing the entire application as the default comparison, and never reconfigure an actuator without explicit authorization and a safe rollback path.
+
 Collect only details relevant to the suspected cost. For capture or streaming, these can include resolution, FPS, encoder, active scene, source types, filters, overlays, and whether recording or streaming is active.
 
 When capture software is relevant:

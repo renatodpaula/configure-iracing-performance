@@ -16,7 +16,8 @@ Run this preflight after establishing the objective and before the first baselin
 Typical categories include:
 
 - **Capture or streaming:** OBS, Streamlabs, XSplit, Medal, NVIDIA Overlay, and similar tools can consume render, copy, encode, memory, and disk resources.
-- **Overlay or telemetry:** Discord overlays, RTSS, Racelab, SimHub, Crew Chief, and similar tools can hook the renderer or update frequently.
+- **Simulator support or control:** SimHub and similar tools may drive dashboards, bass shakers, belt tensioners, motion, wind, LEDs, or telemetry consumers. Treat required outputs as part of the rig, keep them active in every comparison, and isolate only optional plugins, overlays, polling, or outputs with authorization.
+- **Overlay or telemetry:** Discord overlays, RTSS, Racelab, Crew Chief, and similar tools can hook the renderer or update frequently.
 - **Hardware or RGB utilities:** peripheral, wheel, audio, cooling, and lighting software may use background resources but may also be required for driving.
 - **Remote or virtual display:** remote-desktop, virtual-monitor, and display-sharing tools can alter the display path or consume GPU resources.
 - **Browser or launcher:** many browser processes can collectively use meaningful CPU, GPU, and memory even when no single process looks large.
@@ -32,6 +33,22 @@ Do not run every possible subsystem investigation. Start with the observed sympt
 5. Confirm the result with the same trigger. Do not mistake a coincidental improvement for a cause.
 6. Return to iRacing graphics tuning only after the external cause is resolved or reasonably excluded.
 
+For each branch, distinguish these states instead of collapsing them into "enabled":
+
+1. the feature is documented as supported under the required conditions;
+2. the active system path exposes the capability;
+3. the relevant setting is configured;
+4. telemetry or the interface reports it active;
+5. physical or workload behavior confirms the expected effect.
+
+Stop at the first missing prerequisite and investigate that layer. Do not use profile values, configuration flags, or application state as substitutes for downstream behavior.
+
+Before asking for a manual action, write down what new hypothesis it distinguishes and which result would change the next decision. If neither answer is clear, do not request the action. Prefer read-only inspection first.
+
+Before any reboot or disruptive change, record a checkpoint containing the current configuration, observed symptom, completed exclusions, pending outcomes, rollback path, and exact trigger to repeat afterward. When a compound operation changes several variables, record its combined result without assigning individual causality.
+
+Inspect backups before restoration. Apply the smallest understood subset and repeat the original trigger after restoration; do not restore unknown profile or configuration data merely because it was previously present.
+
 If the evidence points to an external program, device path, driver, capture workload, overlay, or system service, read [external-troubleshooting.md](external-troubleshooting.md). Otherwise do not spend time on those branches.
 
 ## Establish the fixed software set
@@ -43,3 +60,4 @@ Before the baseline, record which candidates are:
 - not understood and awaiting the driver's decision.
 
 Do not begin graphics tuning while required software is still changing between runs.
+Do not classify SimHub as disposable overhead when it provides required simulator controls or feedback. Record those functions explicitly and optimize around them.
